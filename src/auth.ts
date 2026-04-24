@@ -4,6 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { allowedEmailDomains, env } from "@/lib/env";
 import { authConfig } from "@/auth.config";
 
+function getEmailVerified(profile: unknown): boolean | undefined {
+  if (!profile || typeof profile !== "object" || !("email_verified" in profile)) {
+    return undefined;
+  }
+
+  const { email_verified } = profile as { email_verified?: unknown };
+  return typeof email_verified === "boolean" ? email_verified : undefined;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
@@ -18,14 +27,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!allowedEmailDomains.includes(domain)) {
         return `/sign-in?error=domain`;
       }
-      // @ts-expect-error google adds this
-      if (profile?.email_verified === false) return false;
+      if (getEmailVerified(profile) === false) return false;
       return true;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        // @ts-expect-error role from db
         token.role = user.role ?? "USER";
       }
       return token;
@@ -33,8 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.id as string;
-        // @ts-expect-error augment
-        session.user.role = (token.role as string) ?? "USER";
+        session.user.role = token.role ?? "USER";
       }
       return session;
     },
