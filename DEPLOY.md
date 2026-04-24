@@ -71,7 +71,7 @@ git push -u origin main
 | `AUTH_GOOGLE_SECRET` | dari Step 3 | |
 | `ALLOWED_EMAIL_DOMAINS` | `detik.com` | Comma-separated kalau multi |
 | `DATABASE_URL` | Neon **pooled** URL | Wajib `-pooler` di host + `?sslmode=require&pgbouncer=true&connection_limit=1` |
-| `DIRECT_DATABASE_URL` | Neon **direct** URL | Untuk `prisma migrate deploy` saat build |
+| `DIRECT_DATABASE_URL` | Neon **direct** URL | Untuk `prisma migrate deploy` saat build. Wajib kalau `DATABASE_URL` pakai pooled/pgbouncer |
 | `OPENROUTER_API_KEY` | dari openrouter.ai/keys | |
 | `OPENROUTER_MODEL_DEFAULT` | `google/gemini-3-flash-preview` | Atau model murah lain |
 | `OPENROUTER_MODEL_PREMIUM` | `anthropic/claude-sonnet-4.6` | |
@@ -89,6 +89,8 @@ git push -u origin main
 5. Klik **Deploy**. Tunggu ~2 menit.
 
 > Build script akan jalanin `prisma migrate deploy && next build`. Kalau migration belum pernah jalan di DB Neon kosong, dia akan apply semua migration di `prisma/migrations/` otomatis.
+>
+> Build sekarang akan fallback ke `DATABASE_URL` **hanya jika** koneksi itu bukan pooled connection. Jadi untuk Neon dengan host `-pooler`, `DIRECT_DATABASE_URL` tetap wajib di-set.
 
 ---
 
@@ -123,7 +125,7 @@ git push -u origin main
 
 | Gejala | Penyebab umum | Fix |
 |---|---|---|
-| Build gagal di `prisma migrate deploy` | `DIRECT_DATABASE_URL` salah / belum di-set | Cek env var di Vercel, harus URL **non-pooled** |
+| Build gagal di `prisma migrate deploy` dengan pesan `DIRECT_DATABASE_URL is required...` | `DATABASE_URL` pakai pooled connection tapi `DIRECT_DATABASE_URL` belum di-set | Cek env var di Vercel, isi `DIRECT_DATABASE_URL` dengan URL **non-pooled/direct** |
 | Login Google "redirect_uri_mismatch" | URI di Google Console belum match domain Vercel | Update Authorized redirect URI di Google Cloud |
 | Streaming chat timeout di tengah | Hobby plan max 60s | Upgrade ke Pro (300s) atau pakai model lebih cepat |
 | `PrismaClientInitializationError: prepared statement already exists` | Pooled URL tanpa `pgbouncer=true` | Tambahkan `?pgbouncer=true&connection_limit=1` ke `DATABASE_URL` |
